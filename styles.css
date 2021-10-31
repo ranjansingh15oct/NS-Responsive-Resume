@@ -11,6 +11,7 @@
   position:sticky;
   top:0%
 }
+
 .info {
   display: flex;
   flex-wrap: wrap;
@@ -163,6 +164,9 @@
   }
   .footer{
 
+  }
+  .responsive {
+    align-item: center;
   }
 
   .navbar li {
