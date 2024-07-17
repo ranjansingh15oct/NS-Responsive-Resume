@@ -1,4 +1,4 @@
-User Data for Dependencies installations for AMAZON Linux 2:-
+User Data for Dependencies installations for AMAZON Linux 2 ONLY:-
 
 #!/bin/bash
 sudo yum -y update
@@ -10,3 +10,5 @@ sudo chmod +x ./install
 sudo ./install auto
 sudo yum install -y python-pip
 sudo pip install awscli
+
+
