@@ -13,6 +13,6 @@ sudo pip install awscli
 
 
 
-ok
+ok..
 
 
