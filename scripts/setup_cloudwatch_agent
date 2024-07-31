@@ -55,3 +55,9 @@ echo "Checking CloudWatch Agent status..."
 sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status
 
 echo "CloudWatch Agent setup completed."
+
+# Clean up the downloaded .deb file
+echo "Cleaning up..."
+ sudo rm -f amazon-cloudwatch-agent.deb
+
+echo "CloudWatch agent setup completed successfully."
