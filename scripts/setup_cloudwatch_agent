@@ -1,0 +1,57 @@
+#!/bin/bash
+
+echo "Starting CloudWatch Agent setup..."
+
+# Download and install CloudWatch Agent
+echo "Downloading CloudWatch Agent..."
+wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+
+echo "Installing CloudWatch Agent..."
+sudo dpkg -i amazon-cloudwatch-agent.deb
+sudo apt-get -f install
+
+# Create configuration directory
+echo "Creating configuration directory..."
+sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+
+# Set permissions for the CloudWatch agent directory
+sudo chmod -R 755 /opt/aws/amazon-cloudwatch-agent
+
+# Create configuration file
+echo "Creating configuration file..."
+cat <<EOL | sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json > /dev/null
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/aws/codedeploy-agent/codedeploy-agent.log",
+            "log_group_name": "CodeDeploy-Logs",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+EOL
+
+# Stop CloudWatch Agent if it's running
+echo "Stopping CloudWatch Agent if it's running..."
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a stop
+
+# Start CloudWatch Agent
+echo "Starting CloudWatch Agent..."
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start
+
+# Check CloudWatch Agent status
+echo "Checking CloudWatch Agent status..."
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status
+
+echo "CloudWatch Agent setup completed."
