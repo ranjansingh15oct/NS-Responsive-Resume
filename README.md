@@ -1,4 +1,4 @@
-User Data for Dependencies installations for AMAZON Linux 2 ok:-
+User Data for Dependencies installations for AMAZON Linux 2 -
 
 #!/bin/bash
 sudo yum -y update
