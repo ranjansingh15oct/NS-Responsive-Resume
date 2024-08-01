@@ -35,7 +35,7 @@ sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
 sudo chmod -R 755 /opt/aws/amazon-cloudwatch-agent
 
 # Retrieve the CloudWatch log group name from EC2 tags
-CWLOGGROUP=$(aws ec2 describe-tags --filters "Name=key,Values=CWLOGGROUP" --query "Tags[0].Value" --output text)
+CWLOGGROUP=$(aws ec2 describe-tags --filters "Name=key,Values=test-server" --query "Tags[0].Value" --output text)
 echo "CWLOGGROUP: $CWLOGGROUP"
 
 # Create the CloudWatch log group if it doesn't exist
