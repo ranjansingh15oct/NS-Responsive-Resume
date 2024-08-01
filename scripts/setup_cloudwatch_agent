@@ -1,25 +1,50 @@
 #!/bin/bash
 
-echo "Starting CloudWatch Agent setup..."
+set -e  # Exit immediately if a command exits with a non-zero status
 
-# Download and install CloudWatch Agent
-echo "Downloading CloudWatch Agent..."
-wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+# Change to a writable directory
+cd /tmp
 
-echo "Installing CloudWatch Agent..."
-sudo dpkg -i amazon-cloudwatch-agent.deb
-sudo apt-get -f install
+# Check if the CloudWatch agent is already installed
+if dpkg-query -W -f='${Status}' amazon-cloudwatch-agent 2>/dev/null | grep -q "ok installed"; then
+    echo "CloudWatch agent is already installed."
+else
+    # Download the CloudWatch agent
+    echo "Downloading CloudWatch agent..."
+    if wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb; then
+        echo "CloudWatch agent downloaded successfully."
+    else
+        echo "Failed to download CloudWatch agent."
+        exit 1
+    fi
 
-# Create configuration directory
-echo "Creating configuration directory..."
+    # Install the CloudWatch agent
+    echo "Installing CloudWatch agent..."
+    if sudo dpkg -i amazon-cloudwatch-agent.deb; then
+        echo "CloudWatch agent installed successfully."
+    else
+        echo "Failed to install CloudWatch agent. Attempting to fix broken dependencies..."
+        sudo apt-get -f install
+    fi
+fi
+
+# Create the configuration directory if it doesn't exist
 sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
 
 # Set permissions for the CloudWatch agent directory
 sudo chmod -R 755 /opt/aws/amazon-cloudwatch-agent
 
-# Create configuration file
-echo "Creating configuration file..."
-cat <<EOL | sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json > /dev/null
+# Retrieve the CloudWatch log group name from EC2 tags
+CWLOGGROUP=$(aws ec2 describe-tags --filters "Name=key,Values=CWLOGGROUP" --query "Tags[0].Value" --output text)
+echo "CWLOGGROUP: $CWLOGGROUP"
+
+# Create the CloudWatch log group if it doesn't exist
+echo "Creating CloudWatch log group..."
+aws logs create-log-group --log-group-name "$CWLOGGROUP" || true
+
+# Write the CloudWatch agent configuration
+echo "Writing CloudWatch agent configuration..."
+sudo bash -c 'cat << EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 {
   "agent": {
     "metrics_collection_interval": 60,
@@ -30,8 +55,8 @@ cat <<EOL | sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agen
       "files": {
         "collect_list": [
           {
-            "file_path": "/var/log/aws/codedeploy-agent/codedeploy-agent.log",
-            "log_group_name": "CodeDeploy-Logs",
+            "file_path": "/opt/codedeploy-agent/deployment-root/deployment-logs/codedeploy-agent-deployments.log",
+            "log_group_name": "'"$CWLOGGROUP"'",
             "log_stream_name": "{instance_id}",
             "timezone": "UTC"
           }
@@ -40,24 +65,20 @@ cat <<EOL | sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agen
     }
   }
 }
-EOL
+EOF'
 
-# Stop CloudWatch Agent if it's running
-echo "Stopping CloudWatch Agent if it's running..."
+# Stop the CloudWatch agent if it's running
+echo "Stopping CloudWatch agent..."
 sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a stop
 
-# Start CloudWatch Agent
-echo "Starting CloudWatch Agent..."
+# Start the CloudWatch agent
+echo "Starting CloudWatch agent..."
 sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start
 
-# Check CloudWatch Agent status
-echo "Checking CloudWatch Agent status..."
-sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status
-
-echo "CloudWatch Agent setup completed."
-
 # Clean up the downloaded .deb file
-echo "Cleaning up..."
- sudo rm -f amazon-cloudwatch-agent.deb
+if [ -f amazon-cloudwatch-agent.deb ]; then
+    echo "Cleaning up..."
+    rm -f amazon-cloudwatch-agent.deb
+fi
 
 echo "CloudWatch agent setup completed successfully."
